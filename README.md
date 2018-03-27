@@ -63,7 +63,7 @@ const filter = Function.call.bind(Function.call, Array.prototype.filter)
 
 Object.assign(Array.prototype, {
     reject(func, thisValue = void 0) {
-        return filter(this, x => !func(x), thisValue)
+        return filter(this, (...args) => !func.apply(thisValue, args))
     }
 })
 ```
