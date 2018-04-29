@@ -90,3 +90,19 @@ Basically the same as `Array.prototype.splice`, but with a couple differences:
     - Python via [`MutableSequence.insert`](https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types) (`s.insert(i, x)` &harr; `s[i:i] = [x]`)
     - Ruby via [`Array#insert`](https://docs.ruby-lang.org/en/2.0.0/Array.html#method-i-insert) (`ary.insert(i, xs...)` &harr; `ary[i, i] = [xs...]`)
     - Java via [`ArrayList.add`](https://docs.oracle.com/javase/9/docs/api/java/util/ArrayList.html#add-int-E-) (`list.add(i, x)` &harr; `list.addAll(i, new T[] {x})`)
+
+## Array.prototype.shuffle()
+
+Shuffle the array's entries in-place via the [Fisher-Yates shuffle](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle) and returns **`this`**.
+
+### Why?
+
+1. This substantially hard to get right. See [this thread](https://esdiscuss.org/topic/proposal-array-prototype-shuffle-fisher-yates) for some background. (If you read it, I did express skepticism, so I'm not *very* behind this, but I can see the use of it.)
+    - The fact many of the answers [here](https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array/18650169#18650169) are either based on well-known algorithms, really inefficient (map with random tags, sort, map to remove tags), or just flat out wrong (`.sort` by `Math.random() - 0.5` should be telling.
+    - With pseudo-random number generators, [there's a very strong risk of bias](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Pseudorandom_generators), just due to the limitations of the generator and the way the algorithm uses random numbers. Assuming a high-quality generator with 128-bit seeds (like xorshift128), you can only safely shuffle up to 34-entry arrays while still being able to hit every permutation. You can stretch it up to 170 with something with 1024-bit states (like [xorshift1024*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)) or a few thousand entries with the slower, heavier [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister) family or (higher-quality, MT-derived) [WELL family of generators](https://en.wikipedia.org/wiki/Well_equidistributed_long-period_linear), but you rarely find anything better that's not a cryptography primitive (like a high-entropy hardware random number generator).
+3. Many languages offer something similar:
+    - Ruby via [`Array#shuffle!`](https://ruby-doc.org/core-2.3.0/Array.html#method-i-shuffle-21)
+    - PHP via [`bool shuffle(array &$array)`](https://secure.php.net/manual/en/function.shuffle.php)
+    - Python via [`random.shuffle(x)`](https://docs.python.org/3.6/library/random.html#random.shuffle)
+    - Java via [`Collections.shuffle(List<?> list)`](https://docs.oracle.com/javase/9/docs/api/java/util/Collections.html#shuffle-java.util.List-)
+    - Clojure via [`clojure.core/shuffle`](https://clojuredocs.org/clojure.core/shuffle)
