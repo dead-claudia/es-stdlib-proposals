@@ -95,7 +95,7 @@ Basically the same as `Array.prototype.splice`, but with a couple differences:
 
 Shuffle the array's entries in-place via the [Fisher-Yates shuffle](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle) (maybe via [the "inside-out" algorithm](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_%22inside-out%22_algorithm)?) and returns **`this`**.
 
-- By default, *randomFunc* is morally equivalent to `max => Math.floor(Math.random() * max)`, but if *randomFunc* is a function, it uses that instead. (This is in case a better random number generator is required, like with large arrays.)
+- By default, *randomFunc* is morally equivalent to `max => Math.floor(Math.random() * max)` (don't actually do this - it will likely fail the last requirement), but if *randomFunc* is a function, it uses that instead. (This is in case a better random number generator is required, like with large arrays.)
 - *randomFunc* is called with the number of remaining indices *max*, and it should return an integer *result*, which is then clamped to 0 ≤ *result* < *max* and used as the index.
 - For all arrays and array-likes with length at most 64, all permutations must be theoretically reachable from a shuffle without a custom *randomFunc*. (This is for things like card draws and similar.)
 
