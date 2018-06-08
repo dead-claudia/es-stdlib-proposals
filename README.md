@@ -33,6 +33,30 @@ This assigns to `this`, starting at `destOffset`, the first `count` items in `ar
     1. Increase *j* by 1.
 1. Return **undefined**.
 
+The steps roughly equate to this after some optimization:
+
+```js
+Array.prototype.set = function (
+    source, srcOffset = 0, destOffset = 0, count = target.length
+) {
+    if (count < 0) throw new RangeError("negative count")
+    count = Math.min(
+        count,
+        Math.max(0, this.length - srcOffset),
+        Math.max(0, source.length - destOffset)
+    )
+
+    // This is an obvious candidate for `std::memmove`
+    if (this === source) {
+        this.copyWithin(srcOffset, destOffset, count)
+    } else {
+        for (let i = 0; i < count; i++) {
+            this[destOffset++] = source[srcOffset++]
+        }
+    }
+}
+```
+
 ### Why?
 
 For `Array.prototype.set`, consider the surprisingly frequent usage of [`System.arraycopy`](https://docs.oracle.com/javase/9/docs/api/java/lang/System.html) within Java circles. In performance-sensitive code when you need to copy items across two arrays, it'd be nice to have a native JIT primitive that can do it in a very highly vectorized fashion. Such a method already exists in typed arrays, but it'd be nice to have that parity be moved over to normal arrays, too, since most normal JS code (even perf-sensitive code) can't lower *all* operations into plain numbers. As for other precedent:
