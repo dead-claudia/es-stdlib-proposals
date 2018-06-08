@@ -19,10 +19,10 @@ This assigns to `this`, starting at `destOffset`, the first `count` items in `ar
 1. Let *srcEnd* be min(*srcLen*, *srcOffset* + *count*).
 1. Let *destEnd* be min(*destLen*, *destOffset* + *count*).
 1. Let *i* be *srcOffset*.
-1. Let *j* be *offset*.
-1. Repeat, while *i* < *srcEnd* and *j* < *end*:
-    1. Let *toKey* be ! ToString(*i*).
-    1. Let *fromKey* be ! ToString(*j*).
+1. Let *j* be *destOffset*.
+1. Repeat, while *i* < *srcEnd* and *j* < *destEnd*:
+    1. Let *fromKey* be ! ToString(*i*).
+    1. Let *toKey* be ! ToString(*j*).
     1. Let *fromPresent* be ? HasProperty(*A*, *fromKey*).
     1. If *fromPresent* is **true**, then:
         1. Let *value* be ? Get(*A*, *fromKey*).
