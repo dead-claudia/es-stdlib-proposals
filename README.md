@@ -140,25 +140,34 @@ Array.prototype.pushAll = function (items) {
     - Java via [`Collection.addAll`](https://docs.oracle.com/javase/9/docs/api/java/util/Collection.html#addAll-java.util.Collection-)
     - Rust via the [`std::iter::Extend<A>` trait](https://doc.rust-lang.org/std/iter/trait.Extend.html)
 
-## Array.prototype.shuffle([ *randomFunc* ])
+## Array.prototype.sort(*compareType* [ , *reserved1* [ , *reserved2* ] ])
 
-Shuffle the array's entries in-place via the [Fisher-Yates shuffle](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle) (maybe via [the "inside-out" algorithm](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#The_%22inside-out%22_algorithm)?) and returns **`this`**.
-
-- By default, *randomFunc* is morally equivalent to `max => Math.floor(Math.random() * max)` (don't actually do this - it will likely fail the last requirement), but if *randomFunc* is a function, it uses that instead. (This is in case a better random number generator is required, like with large arrays.)
-- *randomFunc* is called with the number of remaining indices *max*, and it should return an integer *result*, which is then clamped to 0 ≤ *result* < *max* and used as the index.
-- For all arrays and array-likes with length at most 64, all permutations must be theoretically reachable from a shuffle without a custom *randomFunc*. (This is for things like card draws and similar.)
+- If *compareType* is **"numeric"**, they are compared by numeric value
+- If *compareType* is **"lexicographic"**, they are compared lexicographically (the current default)
+- If *compareType* is **"locale-sensitive"**. they are compared via `(a, b) => a.localeCompare(b, reserved1, reserved2)`
 
 ### Why?
 
-1. This substantially hard to get right. See [this thread](https://esdiscuss.org/topic/proposal-array-prototype-shuffle-fisher-yates) for some background. (If you read it, I did express skepticism, so I'm not *very* behind this, but I can see the use of it.)
-    - The fact many of the answers [here](https://stackoverflow.com/questions/2450954/how-to-randomize-shuffle-a-javascript-array/18650169#18650169) are either based on well-known algorithms, really inefficient (map with random tags, sort, map to remove tags), or just flat out wrong (`.sort` by `Math.random() - 0.5` should be telling.
-    - With pseudo-random number generators, [there's a very strong risk of bias](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Pseudorandom_generators), just due to the limitations of the generator and the way the algorithm uses random numbers. Assuming a high-quality generator with 128-bit seeds (like xorshift128), you can only safely shuffle up to 34-entry arrays while still being able to hit every permutation. You can stretch it up to 170 with something with 1024-bit states (like [xorshift1024*](https://en.wikipedia.org/wiki/Xorshift#xorshift*)) or a few thousand entries with the slower, heavier [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister) family or (higher-quality, MT-derived) [WELL family of generators](https://en.wikipedia.org/wiki/Well_equidistributed_long-period_linear), but you rarely find anything better that's not a cryptography primitive (like a high-entropy hardware random number generator).
-3. Many languages offer something similar:
-    - Ruby via [`Array#shuffle!`](https://ruby-doc.org/core-2.3.0/Array.html#method-i-shuffle-21)
-    - PHP via [`bool shuffle(array &$array)`](https://secure.php.net/manual/en/function.shuffle.php)
-    - Python via [`random.shuffle(x)`](https://docs.python.org/3.6/library/random.html#random.shuffle)
-    - Java via [`Collections.shuffle(List<?> list)`](https://docs.oracle.com/javase/9/docs/api/java/util/Collections.html#shuffle-java.util.List-)
-    - Clojure via [`clojure.core/shuffle`](https://clojuredocs.org/clojure.core/shuffle)
+1. When you want to sort an array of numbers, how often are you *really* expecting `[1, 10, 100, ..., 2, 20, 21, ...]`?
+1. When you want to sort strings, lexicographically makes the most sense for the computer, but locale-sensitive makes the most sense for people. You shouldn't cross these up.
+1. Starting with this, it could be a sufficient starting point for finally fixing this part of array handling. (We could also push people away from the existing zero-argument version.)
+
+## Array.prototype.sortBy(*key* [ , ...*args* ])
+
+- When no comparator is passed, this would be equivalent to `array.sort((a, b) => SortCompare(a[key], b[key]))` where `SortCompare` is defined [here](https://tc39.github.io/ecma262/#sec-sortcompare), but it would also factor in the function change above.
+- When a comparator is passed, this would be equivalent to `array.sort((a, b) => comparator(a[key], b[key]))`, where `comparator` is the comparator itself.
+- When *key* is an iterable, it's assumed to be an iterable of indices to access.
+- When *key* is a function, it's used to get the sort key itself.
+
+### Why?
+
+1. Most use cases for the comparator are really just wanting to sort by a possibly nested property.
+1. Some languages already offer something similar:
+    - Python via [`list.sort(key='foo')`](https://docs.python.org/3/library/stdtypes.html#list.sort)
+    - Ruby via [`Enumerable#sort_by`](https://ruby-doc.org/core-2.5.1/Enumerable.html#method-i-sort_by)
+    - Clojure via [`clojure.core/sort-by`](http://clojure.github.io/clojure/clojure.core-api.html#clojure.core/sort-by)
+    - Java via [`Arrays.sort`](https://docs.oracle.com/javase/9/docs/api/java/util/Arrays.html#sort-T:A-java.util.Comparator-)
+    - Rust via [`[T].sort_by_key`](https://doc.rust-lang.org/std/primitive.slice.html#method.sort_by_key)
 
 ## ArrayBuffer.from(*string* [ , *encoding* ])<br>DataView.prototype.getString(*offset* [ , *byteLength* [ , *encoding* ] ])<br>DataView.prototype.setString(*offset*, *string* [ , *encoding* ])<br>ArrayBuffer.prototype.transcode(*sourceEncoding*, *targetEncoding*)
 
@@ -213,3 +222,11 @@ Notes:
 1. Node.js (via [`Buffer`](https://nodejs.org/api/buffer.html)) and the DOM (via [`TextEncoder`](https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder)) both provide means to do this.
 1. Some complex string operations (like parsing) are much more efficient to do without the overhead of language strings.
 1. This is useful for passing strings to and from exported methods in WASM and asm.js modules. (Most languages deal with strings in UTF-8.)
+
+## Non-proposals
+
+These are things I've been asked to promote, but there's reasons why I won't include them in this list.
+
+- `Array.prototype.shuffle` - The use case isn't general enough to merit being a new global in my opinion, especially considering the pseudo-random number generator complexity you need - most engines' `Math.random` implementations only have up to 128 bits of state, which means [they can only fairly shuffle arrays up to size 34](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Pseudorandom_generators). This means that if you have an array of 100 items, a shuffle based on `Math.random` can only generate a **very** small fraction of the possibilities that array really has. (You *could* stretch that up to 170 using the [xorshift1024*](https://en.wikipedia.org/wiki/Xorshift#xorshift*) or a few thousand entries with a [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister) or related generator, but you'd need hardware cryptographic primitives for anything reliably better.)
+
+    What really needs to happen is a third party implementation needs to be created that accounts for the fact you need enough PSRNG states to cover every permutation an array could have, and this requires quite a bit of non-trivial code. So far, neither [Lodash](https://github.com/lodash/lodash/blob/4.17.10/lodash.js#L6711) nor [Underscore](https://github.com/jashkenas/underscore/blob/master/underscore.js#L397) use an adequate PSRNG to do this, since they defer to `Math.random`.
