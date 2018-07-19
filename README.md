@@ -112,7 +112,7 @@ Basically the same as `Array.prototype.splice`, but with a couple differences:
 1. It'd be nice to have something more explicit than `array.splice(index, 0, ...items)`, with that magic-seeming 0.
 1. Many languages already offer something like the above (and idiomatically prefer it), even though they have an equivalent to `.splice`:
     - Python via [`MutableSequence.insert`](https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types) (`s.insert(i, x)` &harr; `s[i:i] = [x]`)
-    - Ruby via [`Array#insert`](https://docs.ruby-lang.org/en/2.0.0/Array.html#method-i-insert) (`ary.insert(i, xs...)` &harr; `ary[i, i] = [xs...]`)
+    - Ruby via [`Array#insert`](https://docs.ruby-lang.org/en/2.5.1/Array.html#method-i-insert) (`ary.insert(i, xs...)` &harr; `ary[i, i] = [xs...]`)
     - Java via [`ArrayList.add`](https://docs.oracle.com/javase/9/docs/api/java/util/ArrayList.html#add-int-E-) (`list.add(i, x)` &harr; `list.addAll(i, new T[] {x})`)
 
 ## Array.prototype.pushAll(*items*)
@@ -136,7 +136,7 @@ Array.prototype.pushAll = function (items) {
     - This doesn't come up very often in practice, but it has been hit before, and in recursive iteration of large trees and such, the problem surfaces quicker (each function call in V8 apparently takes about ~40 bytes base + 1 per given argument + 6 bytes overhead with misaligned arguments from testing).
 1. Many languages already offer something similar:
     - Python via [`MutableSequence.extend` and `s += t`](https://docs.python.org/3.6/library/stdtypes.html#mutable-sequence-types).
-    - Ruby via [`Array#concat`](https://ruby-doc.org/core-2.5.0/Array.html#method-i-concat)
+    - Ruby via [`Array#concat`](https://ruby-doc.org/core-2.5.1/Array.html#method-i-concat)
     - Java via [`Collection.addAll`](https://docs.oracle.com/javase/9/docs/api/java/util/Collection.html#addAll-java.util.Collection-)
     - Rust via the [`std::iter::Extend<A>` trait](https://doc.rust-lang.org/std/iter/trait.Extend.html)
 
@@ -169,6 +169,39 @@ Array.prototype.pushAll = function (items) {
     - Java via [`Arrays.sort`](https://docs.oracle.com/javase/9/docs/api/java/util/Arrays.html#sort-T:A-java.util.Comparator-)
     - Rust via [`[T].sort_by_key`](https://doc.rust-lang.org/std/primitive.slice.html#method.sort_by_key)
 
+## Array.prototype.sorted(*compareType* [ , *reserved1* [ , *reserved2* ] ]), Array.prototype.sorted(*comparator*), Array.prototype.sortedBy(*key* [ , ...*args* ]), TypedArray.prototype.sorted(*comparator*), TypedArray.prototype.sortedBy(*key* [ , ...*args* ])
+
+Basically a non-destructive sort that creates a new array in the process. Each of these mirrors the mutating version:
+
+- Array.prototype.sort(*comparator*), TypedArray.prototype.sort(*comparator*) &rarr; Array.prototype.sorted(*comparator*), TypedArray.prototype.sorted(*comparator*)
+- Array.prototype.sort(*compareType* [ , *reserved1* [ , *reserved2* ] ]) &rarr; Array.prototype.sorted(*compareType* [ , *reserved1* [ , *reserved2* ] ]), TypedArray.prototype.sorted(*compareType* [ , *reserved1* [ , *reserved2* ] ])
+- Array.prototype.sortBy(*key* [ , ...*args* ]), TypedArray.prototype.sortBy(*key* [ , ...*args* ]) &rarr; Array.prototype.sortedBy(*key* [ , ...*args* ]), TypedArray.prototype.sortedBy(*key* [ , ...*args* ])
+
+### Why?
+
+1. In my experience, it's rare to want to sort an array without also cloning it first. I've found myself do `array.slice().sort()` or `array.concat().sort()` much more frequently than destructive sorting, with the only exception being in performance-sensitive algorithms.
+1. Some languages already offern something similar:
+    - Python via [`sorted(iter)`](https://docs.python.org/3/library/functions.html#sorted)
+    - Ruby via [`Array#sort`](https://ruby-doc.org/core-2.5.0/Array.html#method-i-sort)
+    - Clojure via [`clojure.core/sort`](https://clojuredocs.org/clojure.core/sort) (when the operand isn't a native array)
+    - Java via [`Stream<T>.sorted()`](https://docs.oracle.com/javase/9/docs/api/java/util/stream/Stream.html#sorted--) (for streams only)
+
+## Array.prototype.sortedSearch(*value* [ , *comparator* ]) + other Array/TypedArray variants
+
+Search an array for a value using a sorted search and return its index, or -1 if it doesn't exist. The name is chosen to not imply binary search (the most common algorithm), since faster algorithms (*O*(√(log n))) exist for integer-only arrays, if extra allocation is permitted, and binary search is slower than iterative searching for smaller arrays and segments.
+
+### Why?
+
+1. Sometimes, you need a sorted set, but iteration speed is more important than "does X exist in Y". This combined with `Array.prototype.insert` as proposed here addresses issues with that.
+1. If you need a sorted set, but you have a lot of data, an array is much lighter than a binary search tree.
+1. Several languages already offer this:
+    - Python via [its `bisect` module](https://docs.python.org/3.6/library/bisect.html#module-bisect)
+    - Ruby via [`Array#bsearch`](https://ruby-doc.org/core-2.2.0/Array.html#method-i-bsearch) indirectly
+    - Java via [its various `Array.binarySearch(T[], T)` methods](https://docs.oracle.com/javase/9/docs/api/java/util/Arrays.html)
+    - Rust via [`Vec<T>::binary_search(&self, &T)`](https://doc.rust-lang.org/beta/std/vec/struct.Vec.html#method.binary_search) and friends
+    - C via [`bsearch(key, base, nel, width, compar)`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/bsearch.html)
+    - C++ via [`std::binary_search(ForwardIt, ForwardIt, const T&)`](https://en.cppreference.com/w/cpp/algorithm/binary_search)
+
 ## Array.prototype.partition(*func* [ , *thisValue* ])
 
 Basically a combined `filter` + `reject`, just returning a pair of two arrays where the first are the ones `func` returned truthy on, the second where it returned falsy on. An engine would do better to do that in a single pass rather than two, since it's faster. It'd look something close to this:
@@ -197,6 +230,49 @@ Array.prototype.partition = function (func, thisValue) {
     - Haskell via [`Data.List.partition`](https://hackage.haskell.org/package/base-4.11.1.0/docs/Data-List.html#v:partition)
     - Swift and C++ have in-place partitions via [`Array<T>.partition(by:)`](https://developer.apple.com/documentation/swift/array/3017524-partition) and [`partition` in `<algorithm>`](http://www.cplusplus.com/reference/algorithm/partition/) respectively, where the return value is the start of the second partition.
 
+## Array.prototype.subarray(*from* [ , *to* ])
+
+Return an array view of the array from *from* to *to*. It works similarly to `TypedArray.prototype.subarray`, just generalized to array-likes.
+
+Within subarray views:
+
+- Their [[Prototype]] is set to %ArrayPrototype%.
+- `Array.isArray` returns `true` for them.
+- The view's `.length` is a non-configurable getter with no associated setter.
+- A `TypeError` is raised if you attempt to set an index out of the subarray's bounds.
+- As a result, `push`, `shift`, `insert`, and friends are not permitted.
+- They carry no other marking of their view-ness, but they *do* reference the backing array directly.
+
+### Why?
+
+1. This could be used with methods like `map`, `filter`, and `sorted` to operate more efficiently over an interval.
+1. It exists for consistency with `TypedArray.prototype.subarray`, which does the same thing.
+1. Java has [`List<T>.sublist`](https://docs.oracle.com/javase/9/docs/api/java/util/List.html#subList-int-int-), which works similarly.
+1. This is simpler than adding support for offsets to everything.
+
+Alternatively, this could become syntax and absorb [this proposal](https://github.com/tc39/proposal-slice-notation). In that event, it'd work even more closely to how Python arrays do, and it'd be easier for engines to optimize (fewer assumptions).
+
+## get Array.prototype.reversed, get TypedArray.prototype.reversed
+
+Return an array view of the array where all offsets are subtracted from the length to get the real index. In effect, this does the following:
+
+- `.map`, `.filter`, and `.forEach` would iterate the backing array in reverse.
+- `.lastIndexOf` and `.reduceRight` would be equivalent to `.reversed.indexOf` and `.reversed.reduce`.
+- `.reversed.find` and `.reversed.findIndex` would find the *last* occurrence, not the first.
+- `.sorted().reversed` would do a reverse sort.
+
+Each instance would similarly inherit from the relevant prototype, but they would exist as exotic objects that delegate to their backing arrays. There are a few other particulars:
+
+- If you wanted an actual reversed clone, you could do `.reversed.slice()` or `.slice().reversed`.
+- It's a proper view, so changes to the backing array would propagate to the view.
+- An engine might choose to optimize some of the view handling, such as with reversed slicing and reverse sorting.
+- Reversed views are similar to subarray views in that they're visibly immutable and delegate everything to the backing array.
+
+### Why?
+
+1. It's broadly useful, and most of the time you want a mid-chain reversal, you don't really *need* to do it destructively.
+1. It simplifies the concept of "find last item" to something you can just build from existing stuff.
+
 ## ArrayBuffer.from(*string* [ , *encoding* ])<br>DataView.prototype.getString(*offset* [ , *byteLength* [ , *encoding* ] ])<br>DataView.prototype.setString(*offset*, *string* [ , *encoding* ])<br>ArrayBuffer.prototype.transcode(*sourceEncoding*, *targetEncoding*)
 
 - **`ArrayBuffer.from`**: Transcode the list of code units within *string* into a list of bytes encoded using *encoding* (default: **`"utf-8"`**), and return a new array buffer with its data set to those bytes.
@@ -211,7 +287,7 @@ For all three, each of following encodings are required to be supported in both 
 
 - **`"utf-8"`**
 - [**`"wtf-8"`**](https://simonsapin.github.io/wtf-8/)
-- **`"ascii"`** (all but lower 7 bits are masked off)
+- **`"ascii"`**
 - **`"utf-16-be"`**
 - **`"utf-16-le"`** (alias: **`"utf-16"`**)
 - **`"utf-32-be"`**
@@ -255,6 +331,6 @@ Notes:
 
 These are things I've been asked to promote, but there's reasons why I won't include them in this list.
 
-- `Array.prototype.shuffle` - The use case isn't general enough to merit being a new global in my opinion, especially considering the pseudo-random number generator complexity you need - most engines' `Math.random` implementations only have up to 128 bits of state, which means [they can only fairly shuffle arrays up to size 34](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Pseudorandom_generators). This means that if you have an array of 100 items, a shuffle based on `Math.random` can only generate a **very** small fraction of the possibilities that array really has. (You *could* stretch that up to 170 using the [xorshift1024*](https://en.wikipedia.org/wiki/Xorshift#xorshift*) or a few thousand entries with a [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister) or related generator, but you'd need hardware cryptographic primitives for anything reliably better.)
+- `Array.prototype.shuffle()` - The use case isn't general enough to merit being a new global in my opinion, especially considering the pseudo-random number generator complexity you need - most engines' `Math.random` implementations only have up to 128 bits of state, which means [they can only fairly shuffle arrays up to size 34](https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Pseudorandom_generators). This means that if you have an array of 100 items, a shuffle based on `Math.random` can only generate a **very** small fraction of the possibilities that array really has. (You *could* stretch that up to 170 using the [xorshift1024*](https://en.wikipedia.org/wiki/Xorshift#xorshift*) or a few thousand entries with a [Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister) or related generator, but you'd need hardware cryptographic primitives for anything reliably better.)
 
     What really needs to happen is a third party implementation needs to be created that accounts for the fact you need enough PSRNG states to cover every permutation an array could have, and this requires quite a bit of non-trivial code. So far, neither [Lodash](https://github.com/lodash/lodash/blob/4.17.10/lodash.js#L6711) nor [Underscore](https://github.com/jashkenas/underscore/blob/master/underscore.js#L397) use an adequate PSRNG to do this, since they defer to `Math.random`.
