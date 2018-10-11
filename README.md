@@ -2,6 +2,75 @@
 
 Arrays are incredibly useful. They make working with structured data much easier. But there are a few things I'd like to see. Each of them are detailed with their related algorithm and rationale.
 
+## Array.prototype.delete(*item* [ , *startOffset* [ , *all* ] ])
+
+This removes the first occurrence of `item` from `this` (or all occurrences if `all` is truthy), optionally starting from `startOffset`, returning `true` if the item was found and `false` if it was not. This is mostly sugar for this, but the algorithm can be substantially optimized:
+
+```js
+// Sugar for this
+Array.prototype.delete = function (item, startOffset = undefined, all = false) {
+    let index = this.indexOf(item, startOffset)
+    if (index < 0) return false
+    if (all) {
+        do {
+            this.splice(item, 1)
+            index = this.indexOf(item, index)
+        } while (index >= 0)
+    } else {
+        this.splice(item, 1)
+    }
+    return true
+}
+
+// Expected scalar implementation
+Array.prototype.delete = function (item, startOffset = undefined, all = false) -> Completion {
+    const O = Object(this)
+    const length = ToLength(this.length)
+    startOffset = ToInteger(startOffset)
+    all = Boolean(startOffset)
+    if (startOffset < 0) startOffset = Math.min(0, startOffset + oldLength)
+
+    for (let i = startOffset; i !== oldLength; i++) {
+        const entry = this[i]
+        if (SameValueZero(entry, item)) {
+            let newLength = i++
+            if (all) {
+                while (i !== oldLength) {
+                    const entry = this[i++]
+                    if (!SameValueZero(entry, item)) this[newLength++] = entry
+                }
+            } else {
+                while (i !== oldLength) this[newLength++] = this[i++]
+            }
+
+            this.length = newLength
+            // For arrays, this step can be omitted
+            if (!isNativeArray(this)) {
+                for (let i = newLength; i < oldLength; i++) delete this[i]
+            }
+            return true
+        }
+    }
+
+    return false
+}
+```
+
+### Why?
+
+It's pretty common to want to remove something from an array. And in some cases, an array is actually *better* than a set:
+
+- If it's almost always small and never contains strings (when the constant factor of hashing dominates)
+- If it's rarely tested or removed from, but frequently iterated.
+- If memory usage is a larger concern than computational complexity.
+
+In this case, having it built-in allows a few other optimizations that aren't always possible, like using vector instructions for the whole thing when 1. the array is dense and 2. you don't need to dereference the array's elements to check them. There's also other language precedent:
+
+- Python via [`MutableSequence.remove`](https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types)
+- C# via [`System.Collections.ArrayList.Remove`](https://docs.microsoft.com/en-us/dotnet/api/system.collections.arraylist.remove)
+- Rust recently via [`Vec::remove_item`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.remove_item).
+- Ruby via [`Array#delete`](https://docs.ruby-lang.org/en/2.5.0/Array.html#method-i-delete)
+
 ## Array.prototype.set(*array* [ , *srcOffset* [ , *destOffset* [ , *count* ] ] ])
 
 This assigns to `this`, starting at `destOffset`, the first `count` items in `array` starting from `srcOffset`. I included more spec-like text modeled after `Array.prototype.copyWithin` and `TypedArray.prototype.set` to make it a little clearer what I'm looking for.
@@ -64,7 +133,7 @@ For `Array.prototype.set`, consider the surprisingly frequent usage of [`System.
 - JS already has `TypedArray.prototype.set`.
 - I've seen `Object.assign(array, values)` in the wild more than once, even though it's clearly wrong.
 - Python has the `s[i:j] = t` idiom, which replaces one sublist with another (an extended version of our `.splice`).
-- C# has [`System.Array.Copy`](https://docs.microsoft.com/en-us/dotnet/api/system.array.copy?view=netframework-4.7) (which is effectively Java's `System.arraycopy`), [`System.Buffer.BlockCopy`](https://docs.microsoft.com/en-us/dotnet/api/system.buffer.blockcopy?view=netframework-4.7) (equivalent specialized for primitives), and [`System.Array.CopyTo`](https://docs.microsoft.com/en-us/dotnet/api/system.array.copyto?view=netframework-4.7) for the common case of copying a smaller array's contents into a larger array.
+- C# has [`System.Array.Copy`](https://docs.microsoft.com/en-us/dotnet/api/system.array.copy) (which is effectively Java's `System.arraycopy`), [`System.Buffer.BlockCopy`](https://docs.microsoft.com/en-us/dotnet/api/system.buffer.blockcopy) (equivalent specialized for primitives), and [`System.Array.CopyTo`](https://docs.microsoft.com/en-us/dotnet/api/system.array.copyto) for the common case of copying a smaller array's contents into a larger array.
 - Rust has [`Vec::copy_from_slice`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.copy_from_slice).
 - OCaml has [`Array.blit`](https://caml.inria.fr/pub/docs/manual-ocaml/libref/Array.html) that's effectively Java's `System.arraycopy`.
 - C++ has [`std::copy`](http://www.cplusplus.com/reference/algorithm/copy/), which operates on pointer offsets only.
@@ -112,7 +181,7 @@ Basically the same as `Array.prototype.splice`, but with a couple differences:
 1. It'd be nice to have something more explicit than `array.splice(index, 0, ...items)`, with that magic-seeming 0.
 1. Many languages already offer something like the above (and idiomatically prefer it), even though they have an equivalent to `.splice`:
     - Python via [`MutableSequence.insert`](https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types) (`s.insert(i, x)` &harr; `s[i:i] = [x]`)
-    - Ruby via [`Array#insert`](https://docs.ruby-lang.org/en/2.5.1/Array.html#method-i-insert) (`ary.insert(i, xs...)` &harr; `ary[i, i] = [xs...]`)
+    - Ruby via [`Array#insert`](https://docs.ruby-lang.org/en/2.5.0/Array.html#method-i-insert) (`ary.insert(i, xs...)` &harr; `ary[i, i] = [xs...]`)
     - Java via [`ArrayList.add`](https://docs.oracle.com/javase/9/docs/api/java/util/ArrayList.html#add-int-E-) (`list.add(i, x)` &harr; `list.addAll(i, new T[] {x})`)
 
 ## Array.prototype.pushAll(*items*)
@@ -136,7 +205,7 @@ Array.prototype.pushAll = function (items) {
     - This doesn't come up very often in practice, but it has been hit before, and in recursive iteration of large trees and such, the problem surfaces quicker (each function call in V8 apparently takes about ~40 bytes base + 1 per given argument + 6 bytes overhead with misaligned arguments from testing).
 1. Many languages already offer something similar:
     - Python via [`MutableSequence.extend` and `s += t`](https://docs.python.org/3.6/library/stdtypes.html#mutable-sequence-types).
-    - Ruby via [`Array#concat`](https://ruby-doc.org/core-2.5.1/Array.html#method-i-concat)
+    - Ruby via [`Array#concat`](https://ruby-doc.org/core-2.5.0/Array.html#method-i-concat)
     - Java via [`Collection.addAll`](https://docs.oracle.com/javase/9/docs/api/java/util/Collection.html#addAll-java.util.Collection-)
     - Rust via the [`std::iter::Extend<A>` trait](https://doc.rust-lang.org/std/iter/trait.Extend.html)
 
@@ -164,7 +233,7 @@ Array.prototype.pushAll = function (items) {
 1. Most use cases for the comparator are really just wanting to sort by a possibly nested property.
 1. Some languages already offer something similar:
     - Python via [`list.sort(key='foo')`](https://docs.python.org/3/library/stdtypes.html#list.sort)
-    - Ruby via [`Enumerable#sort_by`](https://ruby-doc.org/core-2.5.1/Enumerable.html#method-i-sort_by)
+    - Ruby via [`Enumerable#sort_by`](https://ruby-doc.org/core-2.5.0/Enumerable.html#method-i-sort_by)
     - Clojure via [`clojure.core/sort-by`](http://clojure.github.io/clojure/clojure.core-api.html#clojure.core/sort-by)
     - Java via [`Arrays.sort`](https://docs.oracle.com/javase/9/docs/api/java/util/Arrays.html#sort-T:A-java.util.Comparator-)
     - Rust via [`[T].sort_by_key`](https://doc.rust-lang.org/std/primitive.slice.html#method.sort_by_key)
@@ -223,7 +292,7 @@ Array.prototype.partition = function (func, thisValue) {
 1. A very large number of `filter`/`reject` cases reduce to this. Any time you see `x.filter(x => cond(x))` followed by `x.filter(x => !cond(x))`, you're looking at something better written with a partition (it's DRYer without losing readability).
 1. Underscore has had it for [a few years at this point](https://github.com/jashkenas/underscore/commit/407d027ccac09ab8f6ddfa1cd5a81ee9516e5d4b), and it was requested as far back as [2011](https://github.com/jashkenas/underscore/issues/132). Lodash added it [shortly thereafter](https://github.com/lodash/lodash/commit/5f02c336e7d584393e98ac35f80efb1d70a3ab98).
 1. Several languages already offer something similar:
-    - Ruby via [`Enumerable#partition`](https://ruby-doc.org/core-2.5.1/Enumerable.html#method-i-partition)
+    - Ruby via [`Enumerable#partition`](https://ruby-doc.org/core-2.5.0/Enumerable.html#method-i-partition)
     - Clojure via [`clojure.core/partition`](https://clojuredocs.org/clojure.core/partition)
     - Kotlin via [`Array<T>.partition`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.collections/partition.html), etc.
     - Rust via [`Iterator<T>.partition`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.partition)
