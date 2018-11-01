@@ -29,46 +29,44 @@ It's not uncommon to want to compare arrays for equality, especially for things 
 In x86 and x86-64, there is native support that makes this more compelling, similarly to why `Array.prototype.copyWithin` and its typed array equivalent exist:
 
 ```asm
-    ; Return = eax
-    ; Array 1 = esi
-    ; Array 2 = edi
-    mov ecx, [esi+length_offset] ; Load own length
-    mov eax, js_false            ; Set result to `false`, in case we jump
-    cmp ecx, [edi+length_offset] ; Compare other length
-    jne next                     ; Jump if not equal
-    cld                          ; Scan forward with `rep cmpsb`
-    mov esi, [esi+data_offset]   ; Load own data
-    mov edi, [edi+data_offset]   ; Load other data
-    rep cmpsb                    ; Compare data
-.next:
-    cmove eax, js_true           ; Set result to `true` if length + values equal
+; Return = rax
+; Array 1 = rsi (clobbered)
+; Array 2 = rdi (clobbered)
+        mov rcx, [rsi+length_offset] ; Load own length
+        mov rax, js_false            ; Set result to `false`, in case we jump
+        cmp rcx, [rdi+length_offset] ; Compare other length
+        jne next                     ; Jump if not equal
+        cld                          ; Scan forward with `rep cmpsb`
+        mov rsi, [rsi+data_offset]   ; Load own data
+        mov rdi, [rdi+data_offset]   ; Load other data
+        rep cmpsb                    ; Compare data
+.next:  cmove rax, js_true           ; Set result to `true` if length + values equal
 ```
 
 It's not quite that easy in ARM, but it's still not *bad* (this assumes 4-bit array length alignment):
 
 ```asm
-    ; Return = r0
-    ; Array 1 = r1
-    ; Array 2 = r2
-    LDR r3, r1, #length_offset
-    LDR r4, r2, #length_offset
-    MOV32 r0, #js_false
-    CMP r3, r4
-    BNE next
-    LDR r1, r1, #data_offset
-    LDR r2, r2, #data_offset
-    B enter
-.loop:
-    LDR r4, r1, r3
-    LDR r5, r2, r3
-    TEQ r4, r5
-    BNE next
-.enter:
-    SUBS r3, r3, #1
-    BNC loop
-.pass:
-    MOV32 r0, #js_true
-.next:
+; Return = r0
+; Array 1 = r0
+; Array 2 = r1
+        MOV r0, r2 ; for easier return setting
+        PUSH {r4,r5}
+        LDR r3, r1, #length_offset
+        LDR r4, r2, #length_offset
+        MOV32 r0, #js_false
+        CMP r3, r4
+        BNE next
+        LDR r1, r1, #data_offset
+        LDR r2, r2, #data_offset
+        B enter
+.loop:  LDR r4, r1, r3
+        LDR r5, r2, r3
+        TEQ r4, r5
+        BNE next
+.enter: SUBS r3, r3, #1
+        BNC loop
+.pass:  MOV32 r0, #js_true
+.next:  POP {r4,r5}
 ```
 
 We also already have a *lot* of language precedent elsewhere - to name a few:
