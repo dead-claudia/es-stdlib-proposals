@@ -17,4 +17,5 @@ There are several proposals
     - [Array.prototype.partition, %TypedArray%.prototype.partition](https://github.com/isiahmeadows/array-additions-proposal/blob/master/proposals/array/partition.md)
     - [Array.prototype.subarray](https://github.com/isiahmeadows/array-additions-proposal/blob/master/proposals/array/subarray.md)
     - [Array.prototype.reversed, %TypedArray%.prototype.reversed](https://github.com/isiahmeadows/array-additions-proposal/blob/master/proposals/array/reversed.md)
+    - [Array.range, %TypedArray%.range](https://github.com/isiahmeadows/array-additions-proposal/blob/master/proposals/array/range.md)
 - [Binary encoding, decoding, and transcoding](https://github.com/isiahmeadows/array-additions-proposal/blob/master/proposals/transcoding.md)
