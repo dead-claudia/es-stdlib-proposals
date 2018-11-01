@@ -1,54 +1,21 @@
-# Array.prototype.delete(*item* [ , *startOffset* [ , *all* ] ])
+# Array.prototype.delete(*item* [ , *all* [ , *startOffset* [ , endOffset ] ] ])
 
-This removes the first occurrence of `item` from `this` (or all occurrences if `all` is truthy), optionally starting from `startOffset`, returning `true` if the item was found and `false` if it was not. This is mostly sugar for this, but the algorithm can be substantially optimized:
+This removes the first occurrence of `item` from `this` (or all occurrences if `all` is truthy), optionally starting from `startOffset`, returning `true` if the item was found and `false` if it was not. This is mostly sugar for this, but the algorithm can be substantially optimized.
 
 ```js
 // Sugar for this
-Array.prototype.delete = function (item, startOffset = undefined, all = false) {
+Array.prototype.delete = function (item, all = false, startOffset = undefined, endOffset = this.length) {
     let index = this.indexOf(item, startOffset)
-    if (index < 0) return false
+    if (index < 0 || index >= endOffset) return false
     if (all) {
         do {
             this.splice(item, 1)
             index = this.indexOf(item, index)
-        } while (index >= 0)
+        } while (index >= 0 && index < endOffset)
     } else {
         this.splice(item, 1)
     }
     return true
-}
-
-// Expected scalar implementation
-Array.prototype.delete = function (item, startOffset = undefined, all = false) -> Completion {
-    const O = Object(this)
-    const length = ToLength(this.length)
-    startOffset = ToInteger(startOffset)
-    all = Boolean(startOffset)
-    if (startOffset < 0) startOffset = Math.min(0, startOffset + oldLength)
-
-    for (let i = startOffset; i !== oldLength; i++) {
-        const entry = this[i]
-        if (SameValueZero(entry, item)) {
-            let newLength = i++
-            if (all) {
-                while (i !== oldLength) {
-                    const entry = this[i++]
-                    if (!SameValueZero(entry, item)) this[newLength++] = entry
-                }
-            } else {
-                while (i !== oldLength) this[newLength++] = this[i++]
-            }
-
-            this.length = newLength
-            // For arrays, this step can be omitted
-            if (!isNativeArray(this)) {
-                for (let i = newLength; i < oldLength; i++) delete this[i]
-            }
-            return true
-        }
-    }
-
-    return false
 }
 ```
 
