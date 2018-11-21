@@ -4,10 +4,13 @@ Basically the same as `Array.prototype.filter`, but with a negated `func`. It co
 
 ```js
 const filter = Function.call.bind(Function.call, Array.prototype.filter)
+const apply = Reflect.apply
 
 Object.assign(Array.prototype, {
     reject(func, thisValue = void 0) {
-        return filter(this, (...args) => !func.apply(thisValue, args))
+        return filter(this, function () {
+            return !apply(func, thisValue, arguments)
+        })
     }
 })
 ```

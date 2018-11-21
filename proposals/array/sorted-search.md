@@ -16,7 +16,7 @@ Observably, this *must* follow binary search, though - getters should be able to
 1. If you need a sorted set, but you have a lot of data, an array is much lighter than a binary search tree.
 1. Several languages already offer this:
     - Python via [its `bisect` module](https://docs.python.org/3.6/library/bisect.html#module-bisect)
-    - Ruby via [`Array#bsearch`](https://ruby-doc.org/core-2.2.0/Array.html#method-i-bsearch) indirectly
+    - Ruby via [`Array#bsearch`](https://ruby-doc.org/core-2.5.0/Array.html#method-i-bsearch) indirectly
     - Java via [its various `Array.binarySearch(T[], T)` methods](https://docs.oracle.com/javase/9/docs/api/java/util/Arrays.html)
     - Rust via [`Vec<T>::binary_search(&self, &T)`](https://doc.rust-lang.org/beta/std/vec/struct.Vec.html#method.binary_search) and friends
     - C via [`bsearch(key, base, nel, width, compar)`](http://pubs.opengroup.org/onlinepubs/9699919799/functions/bsearch.html)

@@ -1,38 +1,32 @@
-# Array.range([ *start* , ] *end* [ , *func* ]), %TypedArray%.range([ *start* , ] *end* [ , *func* ])
+# Array.range(*start* , *end* [ , *step* ] [ , *func* ]), %TypedArray%.range(*start* , *end* [ , *step* ] [ , *func* ])
 
 Basically this:
 
 ```js
 Array.range = TypedArray.range = function (
-    start, end = undefined, func = undefined
+    start, end, step = undefined; func = undefined
 ) {
-    if (func === undefined && typeof end === "function") {
-        func = end
-        end = undefined
-    }
-
-    if (end === undefined) {
-        end = start
-        start = 0
-    }
-
     start = +start; end = +end
-    if (func === null) func = x => x
-    if (typeof func !== "function") throw new TypeError()
+    if (func == null && typeof step === "function") { func = step; step = undefined }
+    if (func != null && typeof func !== "function") throw new TypeError()
 
     const ret = new this[Symbol.species](end - start)
 
-    for (let i = start; i < end; i++) ret[i] = func(i)
+    if (func != null) {
+        for (let i = start; i < end; i++) ret[i] = func(i)
+    } else {
+        for (let i = start; i < end; i++) ret[i] = i
+    }
+
     return ret
 }
 ```
 
-If you want a step, use `Array.range(end - start, x => x * step + start)`.
-
 ### Why?
 
 - I find myself commonly doing `Array.from({length: i}, (_, i) => ...)`, but no engine optimizes that pattern. It's not a super easy pattern to detect and leverage in general because of the lambda, and no engine I'm aware of checks from callees what variables are used in functions. (V8 implemented `.map`/etc. optimization by allowing bailouts within builtins.)
-- It's an obvious case for code gen here
+- It's sometimes clearer to do things like `for (const i of Array.range(start, end - offset))` rather than use an extra variable.
+- It's an obvious case for code gen here.
     - It's embarassingly parallel apart from generating the indices themselves.
     - You can go straight to a "typed" integer/float array even for `Array.range` (as long as the prototype isn't modified).
     - The allocation can be elided if used as the collection for `for ... of`, something a JIT compiler could detect.

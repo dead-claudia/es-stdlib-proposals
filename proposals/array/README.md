@@ -10,7 +10,6 @@ Arrays are incredibly useful. They make working with structured data much easier
 - [Array.prototype.pushAll](push-all.md)
 - [Array.prototype.sort](sort.md)
 - [Array.prototype.sortBy](sort-by.md)
-- [Array.prototype.sorted, Array.prototype.sortedBy, %TypedArray% variants](sorted.md)
 - [Array.prototype.sortedSearch, Array.prototype.sortedSearchBy, %TypedArray% variants](sorted.md)
 - [Array.prototype.partition, %TypedArray%.prototype.partition](partition.md)
 - [Array.prototype.subarray](subarray.md)
