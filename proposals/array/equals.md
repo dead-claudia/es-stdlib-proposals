@@ -13,11 +13,6 @@ Array.prototype.equal = function (other) {
 }
 ```
 
-If you only want to compare slices of each, you could instead slice them accordingly (where `a` and `b` are the arrays in question):
-
-- For normal arrays: `a.slice(startA, endA).equals(b.slice(startB, endB))`
-- For typed arrays: `a.subarray(startA, endA).equals(b.subarray(startB, endB))`
-
 ### Why?
 
 It's not uncommon to want to compare arrays for equality, especially for things like diffing and memoization. It's also a *very* obvious case of specialized code gen for dense arrays:
