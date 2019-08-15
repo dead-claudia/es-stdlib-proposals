@@ -1,4 +1,4 @@
-# Array.prototype.delete(*item* [ , *all* [ , *startOffset* [ , endOffset ] ] ])
+# Array.prototype.delete(*item* [ , *all* [ , *startOffset* [ , *endOffset* ] ] ])
 
 This removes the first occurrence of `item` from `this` (or all occurrences if `all` is truthy), optionally starting from `startOffset`, returning `true` if the item was found and `false` if it was not. This is mostly sugar for this, but the algorithm can be substantially optimized.
 
