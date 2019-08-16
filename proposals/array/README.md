@@ -15,3 +15,4 @@ Arrays are incredibly useful. They make working with structured data much easier
 - [Array.prototype.subarray](subarray.md)
 - [Array.prototype.reversed, %TypedArray%.prototype.reversed](reversed.md)
 - [Array.range, %TypedArray%.range](range.md)
+- [Array.prototype.interleave, %TypedArray%.prototype.interleave](interleave.md)
