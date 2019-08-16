@@ -17,6 +17,7 @@ There are several proposals
     - [Array.prototype.subarray](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/subarray.md)
     - [Array.prototype.reversed, %TypedArray%.prototype.reversed](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/reversed.md)
     - [Array.range, %TypedArray%.range](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/range.md)
+    - [Array.prototype.interleave, %TypedArray%.prototype.interleave](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/interleave.md)
 - [Binary encoding, decoding, and transcoding](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/transcoding.md)
 - [itertools module](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/itertools/README.md)
     - [itertools.filter](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/itertools/filter.md)
