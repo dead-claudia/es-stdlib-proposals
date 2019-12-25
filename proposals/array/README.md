@@ -4,6 +4,7 @@ Arrays are incredibly useful. They make working with structured data much easier
 
 - [Array.prototype.equals, %TypedArray%.prototype.equals](equals.md)
 - [Array.prototype.delete](delete.md)
+- [Array.prototype.deleteAll](delete-all.md)
 - [Array.prototype.set, %TypedArray%.prototype.set](set.md)
 - [Array.prototype.reject, %TypedArray%.prototype.reject](reject.md)
 - [Array.prototype.insert](insert.md)
