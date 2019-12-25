@@ -6,6 +6,7 @@ There are several proposals
 - [Arrays and typed arrays](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/)
     - [Array.prototype.equals, %TypedArray%.prototype.equals](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/equals.md)
     - [Array.prototype.delete](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/delete.md)
+    - [Array.prototype.deleteAll](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/delete.md)
     - [Array.prototype.set, %TypedArray%.prototype.set](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/set.md)
     - [Array.prototype.reject, %TypedArray%.prototype.reject](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/reject.md)
     - [Array.prototype.insert](https://github.com/isiahmeadows/es-stdlib-proposals/blob/master/proposals/array/insert.md)
