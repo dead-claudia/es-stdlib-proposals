@@ -1,6 +1,6 @@
 # Array.prototype.deleteAll(*item* [ , *startOffset* [ , *endOffset* ] ])
 
-This removes the first occurrence of `item` from `this` (or all occurrences if `all` is truthy), optionally starting from `startOffset`, returning the number of items removed. This is sugar for roughly this, but the algorithm can be substantially optimized.
+This removes all occurrences of `item` from `this`, optionally starting from `startOffset` and ending at `endOffset`, returning the number of items removed. This is sugar for roughly this, but the algorithm can be substantially optimized.
 
 ```js
 Array.prototype.deleteAll = function (item, startOffset = 0, endOffset = this.length) {
@@ -26,12 +26,23 @@ It's pretty common to want to remove something from an array. And in some cases,
 - If it's rarely tested or removed from, but frequently iterated.
 - If memory usage is a larger concern than computational complexity.
 
-In this case, having it built-in allows a few other optimizations that aren't always possible, like using vector instructions for the whole thing when 1. the array is dense and 2. you don't need to dereference the array's elements to check them. There's also other language precedent:
+Also, Lodash's `_.compact(array)`, which removes all `null`s and `undefined`s from the array, is as simple as `array.deleteAll(null); array.deleteAll(undefined)`
 
-- Python via [`MutableSequence.remove`](https://docs.python.org/3/library/stdtypes.html#mutable-sequence-types)
-- C# via [`System.Collections.ArrayList.Remove`](https://docs.microsoft.com/en-us/dotnet/api/system.collections.arraylist.remove)
-- Rust recently via [`Vec::remove_item`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.remove_item).
-- Ruby via [`Array#delete`](https://docs.ruby-lang.org/en/2.5.0/Array.html#method-i-delete)
+In this case, having it built-in allows a few other optimizations that aren't always possible, like using vector instructions for the whole thing when 1. the array is dense and 2. you don't need to dereference the array's elements to check them. There's some language and library precedent for this and related:
+
+- Ruby via [`array.delete_if { |i| item == i }`](https://docs.ruby-lang.org/en/2.5.0/Array.html#method-i-delete_if)
+- Java via [`collection.removeIf(item::equals)`](https://docs.oracle.com/javase/10/docs/api/java/util/ArrayList.html#removeIf(java.util.function.Predicate))
+- Ramda via [`R.without([item], array)`](https://ramdajs.com/docs/#without) - although that function uses `Object.is` internally, it would otherwise work like this if it used `SameValueZero` instead:
+
+    ```js
+    R.without = function without(items, array) {
+        if (arguments.length === 0) return without
+        if (arguments.length === 1) return array => without(items, array)
+        const result = array.slice()
+        for (const item of items) result.deleteAll(item)
+        return result
+    }
+    ```
 
 ### Optimization
 
