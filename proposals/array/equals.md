@@ -80,4 +80,13 @@ And of course, there's significant runtime/library precedent:
 - [Lodash](https://lodash.com/docs#isEqual) and [Underscore](https://underscorejs.org/#isEqual) have `_.isEqual` for deep object comparisons, and this would accelerate those for a very common case. (Those are only two of [hundreds of npm packages](https://www.npmjs.com/search?q=equal) for this general kind of thing.)
 - [`array-equal`](https://www.npmjs.com/package/array-equal) currently has about 1.5 million downloads a week and [`shallow-equal`](https://www.npmjs.com/package/shallow-equal) has about 350 thousand per week, but those are only two of [over a hundred](https://www.npmjs.com/search?q=array%20equal) dedicated specifically *for* shallow array equality.
 
-I could go on for a while. JS *is* really the exception here, not the norm for languages of similar scale.
+There's also [this highly-rated Stack Overflow question](https://stackoverflow.com/q/7837456) with [a *lot* of duplicates](https://stackoverflow.com/questions/linked/7837456?lq=1).
+
+I could go on for a while. JS *is* really the exception here, not the norm for languages of similar scale of usage.
+
+### Compatibility impact
+
+This does carry the risk of potential web compatibility issues, and so it would need tested first.
+
+- The [aforementioned Stack Overflow question](https://stackoverflow.com/q/7837456) has [an answer with a conceptual `Array.prototype.equals`](https://stackoverflow.com/q/7837456) with [apparent use in the wild](https://stackoverflow.com/q/26666513), so this could generate some unexpected console warnings. (I doubt that most uses of it would break, however, even if properly guarded as a polyfill.)
+- [Ramda still supports `a.equals(b)` as a fallback for `a["fantasy-land/equals"](b)`](https://github.com/ramda/ramda/blob/master/source/internal/_equals.js#L50-L53), but since this definition follows [Fantasy Land's laws for its `Setoid` type](https://github.com/fantasyland/fantasy-land#setoid) when called with two arrays and no arguments and since Ramda compares arrays indirectly by index + length (it compares key/value equality for own keys), I doubt this will be an issue for most uses.
