@@ -1,53 +1,34 @@
-# Array.prototype.set(*array* [ , *srcOffset* [ , *destOffset* [ , *count* ] ] ])
+# Array.prototype.set(*array* [ , *offset* [ , *start* [ , *end* ] ] ])
 
-This assigns to `this`, starting at `destOffset`, the first `count` items in `array` starting from `srcOffset`. I included more spec-like text modeled after `Array.prototype.copyWithin` and `%TypedArray%.prototype.set` to make it a little clearer what I'm looking for.
+This assigns to `this`, starting at `offset`, the items in `array` from `start` to `end`. I included more spec-like text modeled after `Array.prototype.copyWithin` and `%TypedArray%.prototype.set` to make it a little clearer what I'm looking for.
 
-(The parameter order is to provide sane defaults - the common case for Java's `System.arraycopy` uses `srcPos = 0` and `len = src.length`.)
+The defaults for each of these are as follows:
 
-1. Let *O* be ? ToObject(**this** value).
-1. Let *A* be ? ToObject(*array*).
-1. Let *destLen* be ? ToLength(? Get(*O*, **"length"**)).
-1. Let *srcLen* be ? ToLength(? Get(*A*, **"length"**)).
-1. If *srcOffset* is **undefined**, then let *srcOffset* be 0. Else, let *srcOffset* be ? ToLength(*srcOffset*).
-1. If *destOffset* is **undefined**, then let *destOffset* be 0. Else, let *destOffset* be ? ToLength(*destOffset*).
-1. If *count* is **undefined**, then let *count* be *destLen*. Else, let *count* be ? ToLength(*count*).
-1. If *count* < 0, throw a **RangeError** exception.
-1. Let *srcEnd* be min(*srcLen*, *srcOffset* + *count*).
-1. Let *destEnd* be min(*destLen*, *destOffset* + *count*).
-1. Let *i* be *srcOffset*.
-1. Let *j* be *destOffset*.
-1. Repeat, while *i* < *srcEnd* and *j* < *destEnd*:
-    1. Let *fromKey* be ! ToString(*i*).
-    1. Let *toKey* be ! ToString(*j*).
-    1. Let *fromPresent* be ? HasProperty(*A*, *fromKey*).
-    1. If *fromPresent* is **true**, then:
-        1. Let *value* be ? Get(*A*, *fromKey*).
-        1. Perform ? CreateDataPropertyOrThrow(*O*, *toKey*, *value*).
-    1. Else *fromPresent* is **false**:
-        1. Perform ? DeletePropertyOrThrow(*O*, *toKey*).
-    1. Increase *i* by 1.
-    1. Increase *j* by 1.
-1. Return **undefined**.
+- *offset*: `0`
+- *start*: `0`
+- *end*: `target.length`
 
-The steps roughly equate to this after some optimization:
+It'd be implemented roughly as this:
 
 ```js
+const copyWithin = Function.call.bind(Function.call, [].copyWithin)
+
 Array.prototype.set = function (
-    source, srcOffset = 0, destOffset = 0, count = target.length
+    array, offset = 0, start = 0, end = array.length
 ) {
-    if (count < 0) throw new RangeError("negative count")
-    count = Math.min(
-        count,
-        Math.max(0, this.length - srcOffset),
-        Math.max(0, source.length - destOffset)
-    )
+    offset = Math.floor(offset)
+    start = Math.floor(start)
+    end = Math.floor(end)
+    if (offset < 0) throw new RangeError("negative offset")
+    if (start > end) throw new RangeError("negative length")
 
     // This is an obvious candidate for `std::memmove`
     if (this === source) {
-        this.copyWithin(srcOffset, destOffset, count)
+        copyWithin(this, offset, start, end)
     } else {
-        for (let i = 0; i < count; i++) {
-            this[destOffset++] = source[srcOffset++]
+        const length = this.length
+        while (offset < length && start < end) {
+            this[offset++] = source[start++]
         }
     }
 }
@@ -55,21 +36,22 @@ Array.prototype.set = function (
 
 ### Why?
 
-For `Array.prototype.set`, consider the surprisingly frequent usage of [`System.arraycopy`](https://docs.oracle.com/javase/9/docs/api/java/lang/System.html) within Java circles. In performance-sensitive code when you need to copy items across two arrays, it'd be nice to have a native JIT primitive that can do it in a very highly vectorized fashion. Such a method already exists in typed arrays, but it'd be nice to have that parity be moved over to normal arrays, too, since most normal JS code (even perf-sensitive code) can't lower *all* operations into plain numbers. As for other precedent:
+For `Array.prototype.set`, consider the surprisingly frequent usage of [`System.arraycopy`](https://docs.oracle.com/javase/9/docs/api/java/lang/System.html) within Java circles. In performance-sensitive code when you need to copy items across two arrays, it'd be nice to have a native JIT primitive that can do it in a very highly vectorized fashion. (In fact, I'd say most of my simple loops are literally just copying between arrays.) Such a method already exists in typed arrays, but it'd be nice to have that parity be moved over to normal arrays, too, since most normal JS code (even perf-sensitive code) can't lower *all* operations into plain numbers. As for other precedent:
 
-- JS already has `%TypedArray%.prototype.set`.
+- JS already has `%TypedArray%.prototype.set`, and the non-typed-array variant is almost literally what's proposed here minus typed array-specific coercions and the extra parameters. (It's complete with Get and Set calls in the spec.)
 - I've seen `Object.assign(array, values)` in the wild more than once, even though it's clearly wrong.
-- Python has the `s[i:j] = t` idiom, which replaces one sublist with another (an extended version of our `.splice`).
+- Python has the `s[i:j] = t` idiom, which replaces one sublist with another (an extended version of our `.splice`). You can have a more exact analogue via `s[i:j] = t[k:k+(j-i)]`, and I've seen similar code out in the wild before.
 - C# has [`System.Array.Copy`](https://docs.microsoft.com/en-us/dotnet/api/system.array.copy) (which is effectively Java's `System.arraycopy`), [`System.Buffer.BlockCopy`](https://docs.microsoft.com/en-us/dotnet/api/system.buffer.blockcopy) (equivalent specialized for primitives), and [`System.Array.CopyTo`](https://docs.microsoft.com/en-us/dotnet/api/system.array.copyto) for the common case of copying a smaller array's contents into a larger array.
 - Rust has [`Vec::copy_from_slice`](https://doc.rust-lang.org/std/vec/struct.Vec.html#method.copy_from_slice).
 - OCaml has [`Array.blit`](https://caml.inria.fr/pub/docs/manual-ocaml/libref/Array.html) that's effectively Java's `System.arraycopy`.
-- C++ has [`std::copy`](http://www.cplusplus.com/reference/algorithm/copy/), which operates on pointer offsets only.
-- C, of course, has [`memcpy`](www.cplusplus.com/reference/clibrary/cstring/memcpy/).
+- C++ has [`std::copy`](http://www.cplusplus.com/reference/algorithm/copy/), which operates on both pointer offsets and iterators.
+- C, of course, has [`memcpy`](www.cplusplus.com/reference/clibrary/cstring/memcpy/) and [`memmove`](www.cplusplus.com/reference/clibrary/cstring/memmove/), which are commonly used for this purpose.
+- There's other examples in other languages, too (like [Julia](https://docs.julialang.org/en/v1/base/arrays/index.html#Base.copyto!-Tuple{AbstractArray,CartesianIndices,AbstractArray,CartesianIndices})), but you get the point.
 
-## %TypedArray%.prototype.set(*overloaded* [ , *srcOffset* [ , *destOffset* [ , *count* ] ] ])
+## %TypedArray%.prototype.set(*overloaded* [ , *offset* [ , *start* [ , *end* ] ] ])
 
-Update the offset handling to work similarly to my proposed `Array.prototype.set`. Note that the *srcOffset* is functionally the same as the existing second *offset* parameter within the spec, so it's not super breaking.
+Update the offset handling to work similarly to my proposed `Array.prototype.set`. Note that the *offset* is the same as what's currently in the spec, so the risk of breakage I suspect would be rather low.
 
 ### Why?
 
-I find it surprising that they're *not* there in the typed array variant, and I feel it limits its utility by quite a bit. It's something engines already have to have just to perform the algorithm, so it shouldn't be that hard to allow users to provide info to hook into it.
+I find it surprising that they're *not* there in the typed array variant, and I feel it limits its utility by quite a bit. Engines already have to use a start offset just to perform the algorithm, and it's pretty trivial to go from source end offset to target end offset (it's just a couple subtracts), so it shouldn't be that hard to allow users to provide info to hook into it. Also, most the above precedent for `Array.prototype.set` contains such functionality.
